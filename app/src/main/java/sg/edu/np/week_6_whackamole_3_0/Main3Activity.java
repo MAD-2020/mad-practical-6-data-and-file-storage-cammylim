@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 
 public class Main3Activity extends AppCompatActivity {
     /* Hint:
@@ -25,6 +26,9 @@ public class Main3Activity extends AppCompatActivity {
             e. Each location of the mole is randomised.
         5. There is an option return to the login page.
      */
+    UserData queryData;
+    Button back;
+    MyDBHandler dbHandler = new MyDBHandler(this,null,null,1);
     private static final String FILENAME = "Main3Activity.java";
     private static final String TAG = "Whack-A-Mole3.0!";
 
@@ -32,12 +36,32 @@ public class Main3Activity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main3);
-        /* Hint:
-        This method receives the username account data and looks up the database for find the
-        corresponding information to display in the recyclerView for the level selections page.
+        back = findViewById(R.id.backLoginButton);
+        final String username = getIntent().getStringExtra("username");
+        RecyclerView recyclerView = findViewById(R.id.recyclerView);
+        CustomScoreAdaptor csAdaptor = new CustomScoreAdaptor(dbHandler.findUser(username));
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(linearLayoutManager);
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
+        csAdaptor.setOnItemClickListener(new CustomScoreAdaptor.OnItemClickListener(){
+            @Override
+            public void ItemClick(int position) {
+                Log.v(TAG, FILENAME + ": Show level for User: "+ username);
+                Intent intent = new Intent(Main3Activity.this,Main4Activity.class);
+                intent.putExtra("level",position);
+                intent.putExtra("username",username);
+                startActivity(intent);
 
-        Log.v(TAG, FILENAME + ": Show level for User: "+ userName);
-         */
+            }
+        });
+        recyclerView.setAdapter(csAdaptor);
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Main3Activity.this,MainActivity.class);
+                startActivity(intent);
+            }
+        });
     }
 
     @Override

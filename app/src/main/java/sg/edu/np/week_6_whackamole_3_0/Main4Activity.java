@@ -11,62 +11,76 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Random;
 
 public class Main4Activity extends AppCompatActivity {
-
-    /* Hint:
-        1. This creates the Whack-A-Mole layout and starts a countdown to ready the user
-        2. The game difficulty is based on the selected level
-        3. The levels are with the following difficulties.
-            a. Level 1 will have a new mole at each 10000ms.
-                - i.e. level 1 - 10000ms
-                       level 2 - 9000ms
-                       level 3 - 8000ms
-                       ...
-                       level 10 - 1000ms
-            b. Each level up will shorten the time to next mole by 100ms with level 10 as 1000 second per mole.
-            c. For level 1 ~ 5, there is only 1 mole.
-            d. For level 6 ~ 10, there are 2 moles.
-            e. Each location of the mole is randomised.
-        4. There is an option return to the login page.
-     */
     private static final String FILENAME = "Main4Activity.java";
     private static final String TAG = "Whack-A-Mole3.0!";
     CountDownTimer readyTimer;
     CountDownTimer newMolePlaceTimer;
+    int[]countdownList = {10,9,8,7,6,5,4,3,2,1};
+    int level;
+    TextView score;
+    Button back;
+    int scoreCount;
+    boolean game = false;
+    String username;
+    ArrayList<Button> buttonList = new ArrayList<>();
+
+    MyDBHandler dbHandler = new MyDBHandler(this,null,null,1);
 
     private void readyTimer(){
-        /*  HINT:
-            The "Get Ready" Timer.
-            Log.v(TAG, "Ready CountDown!" + millisUntilFinished/ 1000);
-            Toast message -"Get Ready In X seconds"
-            Log.v(TAG, "Ready CountDown Complete!");
-            Toast message - "GO!"
-            belongs here.
-            This timer countdown from 10 seconds to 0 seconds and stops after "GO!" is shown.
-         */
+        readyTimer = new CountDownTimer(10000,1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                Log.v(TAG, "Ready CountDown!" + millisUntilFinished/ 1000);
+                Toast.makeText(getApplicationContext(),"Get Ready In "+millisUntilFinished/1000+" seconds",Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFinish() {
+                Toast.makeText(getApplicationContext(),"GO!", Toast.LENGTH_SHORT).show();
+                placeMoleTimer(level);
+                game = true;
+            }
+        };
+        readyTimer.start();
     }
-    private void placeMoleTimer(){
-        /* HINT:
-           Creates new mole location each second.
-           Log.v(TAG, "New Mole Location!");
-           setNewMole();
-           belongs here.
-           This is an infinite countdown timer.
-         */
+    private void placeMoleTimer(int level){
+        newMolePlaceTimer = new CountDownTimer(1000*countdownList[level],1000*countdownList[level]) {
+            public void onTick(long millisUntilFinished) {
+                Log.v(TAG,"New Mole Location!");
+                setNewMole();
+            }
+
+            @Override
+            public void onFinish() {
+                newMolePlaceTimer.start();
+            }
+        };
+        newMolePlaceTimer.start();
     }
     private static final int[] BUTTON_IDS = {
-            /* HINT:
-                Stores the 9 buttons IDs here for those who wishes to use array to create all 9 buttons.
-                You may use if you wish to change or remove to suit your codes.*/
+            R.id.button,
+            R.id.button2,
+            R.id.button3,
+            R.id.button4,
+            R.id.button5,
+            R.id.button6,
+            R.id.button7,
+            R.id.button8,
+            R.id.button9
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main4);
+        level = getIntent().getIntExtra("level",0);
+        username = getIntent().getStringExtra("username");
+        Log.v(TAG,"Level: " + level);
         /*Hint:
             This starts the countdown timers one at a time and prepares the user.
             This also prepares level difficulty.
@@ -75,51 +89,91 @@ public class Main4Activity extends AppCompatActivity {
             It also prepares the back button and updates the user score to the database
             if the back button is selected.
          */
-
-
         for(final int id : BUTTON_IDS){
-            /*  HINT:
-            This creates a for loop to populate all 9 buttons with listeners.
-            You may use if you wish to remove or change to suit your codes.
-            */
+            final Button bQuery = findViewById(id);
+            buttonList.add(bQuery);
         }
+        score = findViewById(R.id.score);
+        back = findViewById(R.id.backButton);
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                updateUserScore();
+                Intent intent = new Intent(Main4Activity.this,Main3Activity.class);
+                intent.putExtra("username",username);
+                startActivity(intent);
+            }
+        });
+
     }
     @Override
     protected void onStart(){
         super.onStart();
+        UpdateScore();
         readyTimer();
     }
-    private void doCheck(Button checkButton)
+    private boolean doCheck(Button checkButton)
     {
-        /* Hint:
-            Checks for hit or miss
-            Log.v(TAG, FILENAME + ": Hit, score added!");
-            Log.v(TAG, FILENAME + ": Missed, point deducted!");
-            belongs here.
-        */
-
+        return checkButton.getText() == "*";
     }
 
     public void setNewMole()
     {
-        /* Hint:
-            Clears the previous mole location and gets a new random location of the next mole location.
-            Sets the new location of the mole. Adds additional mole if the level difficulty is from 6 to 10.
-         */
+        ArrayList<Button> molesList = new ArrayList<>();
         Random ran = new Random();
         int randomLocation = ran.nextInt(9);
-
+        Button b = buttonList.get(randomLocation);
+        molesList.add(b);
+        if(level>5){
+            int r2 = ran.nextInt(9);
+            Button b2 = buttonList.get(r2);
+            molesList.add(b2);
+        }
+        for(Button c : buttonList){
+            if (molesList.contains(c)){
+                c.setText("*");
+                Log.v(TAG,"New mole location!");
+            }
+            else{
+                c.setText("O");
+            }
+        }
     }
+    public void OnClickButton(View v) {
+        if(game){
+            Button button = (Button) v;
+            if (doCheck(button)) {
+                scoreCount++;
+                Log.v(TAG, "Hit, score added!");
+                placeMoleTimer(level);
+            }
+            else if(scoreCount != 0){
+                scoreCount--;
+                Log.v(TAG, "Missed, score deducted!");
+            }
+            else{
+                Log.v(TAG, "Missed, score deducted!");
+            }
+            UpdateScore();
+        }
+    }
+    public void UpdateScore() {
+        score.setText(String.valueOf(scoreCount));
+    }
+
 
     private void updateUserScore()
     {
+        if(scoreCount > dbHandler.findUser(username).getScores().get(level))
+        {
+            dbHandler.UpdateScore(username,scoreCount,level+1);
+            newMolePlaceTimer.cancel();
+            readyTimer.cancel();
+            Log.v(TAG, FILENAME + ": Update User Score...");
 
-     /* Hint:
-        This updates the user score to the database if needed. Also stops the timers.
-        Log.v(TAG, FILENAME + ": Update User Score...");
-      */
-        newMolePlaceTimer.cancel();
-        readyTimer.cancel();
+        }
+
+
     }
 
 }
